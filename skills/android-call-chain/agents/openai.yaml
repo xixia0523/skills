@@ -1,0 +1,7 @@
+interface:
+  display_name: "Android 调用链研究"
+  short_description: "还原固定 Android 版本的唯一源码调用链及完整请求返回闭环"
+  default_prompt: "使用 $android-call-chain，基于指定 Android 版本分析一个上层 API 的完整源码调用链。"
+
+policy:
+  allow_implicit_invocation: false
