@@ -44,6 +44,8 @@ Skill 查询当前服务端的 `gpt-image-*` 模型，展示列表并等待用�
 
 首次安装写入、配置读取或生图联网受限时，先通过宿主的审批机制请求所需权限，获准后继续；用户拒绝、自动审批拒绝或策略禁止提权时，停止、说明原因并给出手动操作办法。已有安装始终按上面的手动重装流程处理。详见 [references/permissions.md](references/permissions.md)。
 
+安装 Skill 与会话权限相互独立，重装或重开会话不会自动开放网络。`Operation not permitted` 只表示本次访问受阻；CLI 对可识别的本地权限错误返回退出码 `3` 和 `PERMISSION_REQUIRED`，由 Agent 提交原生权限申请，等待结果并在获准后继续。不能仅凭错误推断“宿主禁止申请权限”；若当前宿主确有禁止规则，必须说明具体规则及来源。
+
 ## 环境与配置
 
 需要 Python 3，无第三方 Python 依赖。服务端需提供 `GET /v1/models` 和 `POST /v1/images/generations`，并支持 `gpt-image-*` 模型。

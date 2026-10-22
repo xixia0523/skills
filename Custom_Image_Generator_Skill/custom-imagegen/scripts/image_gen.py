@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import errno
 import getpass
 import json
 import os
@@ -24,6 +25,7 @@ DEFAULT_QUALITY = "medium"
 DEFAULT_FORMAT = "png"
 DEFAULT_OUTPUT = "output/custom-imagegen/output.png"
 MAX_RESPONSE_BYTES = 100 * 1024 * 1024
+EXIT_PERMISSION_REQUIRED = 3
 
 
 class ConfigError(Exception):
@@ -33,6 +35,35 @@ class ConfigError(Exception):
 def die(message: str, code: int = 1) -> None:
     print(f"Error: {message}", file=sys.stderr)
     raise SystemExit(code)
+
+
+def is_permission_denial(error: BaseException) -> bool:
+    if isinstance(error, HTTPError):
+        return False
+    if isinstance(error, PermissionError):
+        return True
+    if isinstance(error, OSError) and error.errno in {errno.EACCES, errno.EPERM, errno.EROFS}:
+        return True
+    if isinstance(error, URLError):
+        reason = error.reason
+        if isinstance(reason, BaseException):
+            return is_permission_denial(reason)
+        if isinstance(reason, str):
+            return any(message in reason.lower() for message in (
+                "operation not permitted", "permission denied", "read-only file system",
+            ))
+    return False
+
+
+def permission_required(operation: str) -> None:
+    die(
+        f"PERMISSION_REQUIRED: {operation} encountered a local permission denial. "
+        "The calling agent must request access through the host's approval mechanism "
+        "unless current host instructions explicitly prohibit it, then resume after approval. "
+        "This error does not establish that approval requests are forbidden. "
+        "Before resubmitting generation, confirm the previous request was never submitted.",
+        EXIT_PERMISSION_REQUIRED,
+    )
 
 
 def default_config_path() -> Path:
@@ -49,13 +80,15 @@ def config_path(raw: str | None) -> Path:
 
 
 def parse_env(path: Path, *, required: bool = True) -> dict[str, str]:
-    if not path.is_file():
+    try:
+        contents = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
         if required:
             raise ConfigError(f"configuration file not found: {path}")
         return {}
 
     values: dict[str, str] = {}
-    for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_no, raw in enumerate(contents.splitlines(), 1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -265,7 +298,9 @@ def request_json(
                 time.sleep(delay)
                 continue
             die(f"{operation} returned HTTP {exc.code}: {detail[:1000]}")
-        except (URLError, TimeoutError) as exc:
+        except OSError as exc:
+            if is_permission_denial(exc):
+                permission_required(operation)
             if attempt < attempts:
                 delay = min(8, 2**attempt)
                 print(f"Network error; retrying in {delay}s.", file=sys.stderr)
@@ -316,7 +351,11 @@ def download_image(url: str, api_key: str, timeout: int) -> bytes:
     try:
         with build_opener(safe_proxy_handler()).open(request, timeout=timeout) as response:
             return read_limited(response)
-    except (HTTPError, URLError, TimeoutError) as exc:
+    except HTTPError as exc:
+        die(f"failed to download generated image: {exc}")
+    except OSError as exc:
+        if is_permission_denial(exc):
+            permission_required("Generated image download")
         die(f"failed to download generated image: {exc}")
     return b""
 
@@ -507,6 +546,10 @@ def main() -> int:
         args.func(args)
     except ConfigError as exc:
         die(str(exc), 2)
+    except OSError as exc:
+        if is_permission_denial(exc):
+            permission_required("Local file access")
+        raise
     return 0
 
 

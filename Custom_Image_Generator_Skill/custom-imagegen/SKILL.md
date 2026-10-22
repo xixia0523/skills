@@ -16,9 +16,15 @@ Resolve `<skill-dir>` as the directory containing this `SKILL.md`; do not assume
 
 ## Permission gate
 
-Apply [references/permissions.md](references/permissions.md) to installation, configuration access, model discovery, generation, and saving images. When a required action is blocked by filesystem or network permissions, request the user's authorization through the host's approval mechanism and resume after approval. Reuse existing grants. Do not treat a sandbox denial as a provider failure or immediately hand the task back to the user. If authorization is declined or host policy prohibits escalation, stop the blocked action, explain the specific restriction, and provide runnable manual recovery commands. Chat consent cannot override a host prohibition.
+Apply [references/permissions.md](references/permissions.md) to installation, configuration access, model discovery, generation, and saving images. Installation does not grant filesystem or network access to later sessions. Reuse existing grants.
 
-`Operation not permitted` proves the attempted action was blocked; it does not prove that approval requests are forbidden. Before handing the action back to the user, either submit the native approval request or identify the explicit current host rule that prohibits it. Do not infer a `never` policy from the error, missing settings, or an earlier session. When approval requests are permitted, explaining that permission is needed is not a substitute for submitting the request. If no approval mechanism is available, identify that limitation and explain how the user can enable an authorized session or run the command manually.
+When access is blocked, including `Operation not permitted`, `Permission denied`, or CLI exit code `3` (`PERMISSION_REQUIRED`):
+
+1. Use the current host instructions and tool schema to determine the supported approval flow. If an execution tool exposes `sandbox_permissions`, submit the blocked command with `sandbox_permissions="require_escalated"` and a concise `justification` question, unless a current host instruction explicitly forbids that request. An unspecified approval policy is not a prohibition. Explaining the need for permission or printing a command does not submit an approval request.
+2. Wait for the approval result; after approval, resume the blocked step. A CLI process exiting does not end the agent's task. Do not infer refusal from silence, a pending request, an earlier session, or the access error itself.
+3. If the host offers no approval tool, explain the missing capability and ask the user to enable its supported permission flow. Stop the blocked action only after an actual denial or an explicit current host prohibition; when a required approval flow is unavailable, report the task as blocked and offer manual recovery. Identify the specific rule or tool result and its source. Distinguish user refusal from automatic review rejection. Chat consent cannot override host enforcement.
+
+Do not classify a local sandbox denial as a provider failure or immediately hand the query back to the user. Follow the reference's submission and recovery rules before retrying generation.
 
 ## Installation and updates
 
