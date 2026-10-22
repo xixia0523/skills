@@ -1,61 +1,54 @@
-# Custom Image Generator Skill
+# Custom Image Generator
 
-这是一个可移植的 Codex/AI agent 生图 skill。它通过用户自己的 OpenAI 兼容 Images API 生成图片，并在触发后避开系统 `imagegen` skill。
+符合 [Agent Skills 规范](https://agentskills.io/specification) 的独立生图 Skill 包。完整保留本目录，入口为 [SKILL.md](SKILL.md)，配置说明为 [references/setup.md](references/setup.md)。
 
-## 交给 AI agent 的安装要求
+## 安装
 
-将完整的 `custom-imagegen` 文件夹或分享压缩包交给 agent，并告诉它：
-
-```text
-安装这个 custom-imagegen skill，按其中的 SKILL.md 和 references/setup.md 完成配置检查。以后生成新图片时使用 $custom-imagegen，不使用系统 imagegen。不要让我在聊天中粘贴 API key。
-```
-
-Agent 应将整个目录安装到它的 skills 目录，例如：
+将本目录交给 Agent，并告诉它：
 
 ```text
-~/.codex/skills/custom-imagegen
+使用包内 scripts/install_skill.py 安装或更新 custom-imagegen Skill；已安装时覆盖旧版并沿用已有外部配置和环境变量。
+安装后运行 image_gen.py check，配置有效时直接使用。
+不要让我在聊天中粘贴 API key。以后生成新图片时使用 $custom-imagegen。
 ```
 
-安装后可能需要开启新会话，让 agent 重新发现 skill。
-
-## 接收者需要准备
-
-- Python 3，无需安装第三方 Python 包。
-- 一个实现了 `POST /v1/images/generations` 的 OpenAI 兼容服务。
-- 该服务的 base URL、API key，以及可用的 `gpt-image-*` 模型。
-
-推荐运行交互式配置，API key 不会出现在命令历史中：
-
-```bash
-python3 ~/.codex/skills/custom-imagegen/scripts/image_gen.py configure
-```
-
-默认配置文件为 `~/.config/custom-imagegen/.env`，权限为 `0600`。也可以让 agent 从已有配置导入，只需提供文件路径，不要在聊天中发送文件内容：
-
-```bash
-python3 ~/.codex/skills/custom-imagegen/scripts/image_gen.py configure \
-  --from-env-file "/path/to/existing/.env"
-```
-
-配置文件格式：
-
-```dotenv
-OPENAI_API_KEY=<接收者自己的 key>
-AI_BASE_URL=https://provider.example/v1
-```
-
-配置不能放进 skill 文件夹，也不能打进分享包。每位接收者必须使用自己的 key。
-
-验证配置：
-
-```bash
-python3 ~/.codex/skills/custom-imagegen/scripts/image_gen.py check
-```
-
-验证完成后可在新会话中使用：
+通过 GitHub 链接交给 Agent 安装或更新：
 
 ```text
-$custom-imagegen 生成一张春节厨房做饭图片
+从 https://github.com/xixia0523/skills/tree/main/Custom_Image_Generator_Skill/custom-imagegen 下载最新 Skill 到临时目录，
+运行新版 scripts/install_skill.py；若已安装则覆盖旧版，保留已有 API key、服务地址及相关环境配置。
+安装后检查配置，有效时直接沿用，不重新配置，不要让我在聊天中粘贴 API key。
 ```
 
-完整配置方式和错误处理见 `references/setup.md`。
+也可以在终端执行：
+
+```bash
+custom_imagegen_checkout="$(mktemp -d)"
+git clone --depth 1 --branch main https://github.com/xixia0523/skills.git "$custom_imagegen_checkout/skills"
+python3 "$custom_imagegen_checkout/skills/Custom_Image_Generator_Skill/custom-imagegen/scripts/install_skill.py"
+```
+
+默认安装到 `$CODEX_HOME/skills/custom-imagegen`，未设置 `CODEX_HOME` 时为 `~/.codex/skills/custom-imagegen`。同一命令兼顾首次安装和覆盖更新；先校验新版，替换失败时恢复旧版。完整流程见 [安装与更新说明](references/install.md)。
+
+## 配置
+
+需要 Python 3，无第三方 Python 依赖。服务端必须提供 `GET /v1/models` 和 `POST /v1/images/generations`，并支持 `gpt-image-*` 模型。
+
+首次使用时先检查配置；安装后也可将脚本路径替换为安装位置：
+
+```bash
+python3 scripts/image_gen.py check
+python3 scripts/image_gen.py models
+```
+
+检查通过时直接沿用原配置。只有配置缺失或无效时，才运行 `python3 scripts/image_gen.py configure`。
+
+`configure` 通过本地交互读取 API key；默认配置保存在 `~/.config/custom-imagegen/.env`，CLI 写入权限为 `0600`。导入已有配置、环境变量和错误处理见 [配置说明](references/setup.md)。每位使用者提供自己的配置，配置文件不放在本目录。
+
+## 使用
+
+```text
+$custom-imagegen 生成一张夏日中国乡村儿童在田野和溪流边玩耍的图片。
+```
+
+Skill 每次先读取服务端支持的 `gpt-image-*` 模型，展示列表并等待用户选择，再使用选定模型生图。即使只有一个模型也需要选择；查询失败或没有支持的模型时提示并停止。

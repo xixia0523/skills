@@ -1,0 +1,14 @@
+# Local generated images and tests
+output/
+test/
+tests/
+
+# Distribution archives
+dist/
+
+# Local credentials and Python artifacts
+.env
+.env.*
+__pycache__/
+*.py[cod]
+.venv/

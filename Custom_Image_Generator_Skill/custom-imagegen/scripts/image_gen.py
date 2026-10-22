@@ -18,7 +18,7 @@ from urllib.parse import urlsplit, urlunsplit
 from urllib.request import ProxyHandler, Request, build_opener, getproxies
 
 
-DEFAULT_MODEL = "gpt-image-2"
+DEFAULT_MODEL_TIMEOUT = 30
 DEFAULT_SIZE = "1024x1024"
 DEFAULT_QUALITY = "medium"
 DEFAULT_FORMAT = "png"
@@ -223,48 +223,83 @@ def read_limited(response: Any) -> bytes:
     return data
 
 
-def request_json(url: str, api_key: str, payload: dict[str, Any], timeout: int) -> dict[str, Any]:
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+def request_json(
+    url: str,
+    api_key: str,
+    payload: dict[str, Any] | None,
+    timeout: int,
+    *,
+    operation: str = "Image API",
+    attempts: int = 3,
+) -> dict[str, Any]:
+    body = json.dumps(payload, ensure_ascii=False).encode("utf-8") if payload is not None else None
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "application/json",
+        "User-Agent": "codex-custom-imagegen/2.0",
+    }
+    if body is not None:
+        headers["Content-Type"] = "application/json"
     request = Request(
         url,
         data=body,
-        method="POST",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "User-Agent": "codex-custom-imagegen/2.0",
-        },
+        method="POST" if body is not None else "GET",
+        headers=headers,
     )
     opener = build_opener(safe_proxy_handler())
-    for attempt in range(1, 4):
+    for attempt in range(1, attempts + 1):
         try:
             with opener.open(request, timeout=timeout) as response:
                 raw = read_limited(response)
             result = json.loads(raw.decode("utf-8"))
             if not isinstance(result, dict):
-                die("API returned an unexpected JSON response")
+                die(f"{operation} returned an unexpected JSON response")
             return result
         except HTTPError as exc:
             detail = exc.read(8192).decode("utf-8", errors="replace")
+            detail = detail.replace(api_key, "<redacted>")
             detail = re.sub(r"(?i)bearer\s+[A-Za-z0-9._~+/-]+", "Bearer <redacted>", detail)
-            if (exc.code == 429 or 500 <= exc.code < 600) and attempt < 3:
+            if (exc.code == 429 or 500 <= exc.code < 600) and attempt < attempts:
                 delay = min(8, 2**attempt)
                 print(f"Transient HTTP {exc.code}; retrying in {delay}s.", file=sys.stderr)
                 time.sleep(delay)
                 continue
-            die(f"Image API returned HTTP {exc.code}: {detail[:1000]}")
+            die(f"{operation} returned HTTP {exc.code}: {detail[:1000]}")
         except (URLError, TimeoutError) as exc:
-            if attempt < 3:
+            if attempt < attempts:
                 delay = min(8, 2**attempt)
                 print(f"Network error; retrying in {delay}s.", file=sys.stderr)
                 time.sleep(delay)
                 continue
-            die(f"Image API request failed: {exc}")
-        except json.JSONDecodeError:
-            die("Image API returned invalid JSON")
-    die("Image API request failed after retries")
+            die(f"{operation} request failed: {exc}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            die(f"{operation} returned invalid JSON")
+    die(f"{operation} request failed after retries")
     return {}
+
+
+def fetch_image_models(api_key: str, base_url: str, timeout: int) -> list[str]:
+    result = request_json(
+        base_url + "/models",
+        api_key,
+        None,
+        timeout,
+        operation="Image model discovery",
+        attempts=1,
+    )
+    data = result.get("data")
+    if not isinstance(data, list):
+        die("could not read image models: /models returned an invalid model list; generation stopped")
+    model_ids = set()
+    for item in data:
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"].strip():
+            die("could not read image models: /models returned an invalid model entry; generation stopped")
+        model_id = item["id"]
+        if model_id.startswith("gpt-image-") and model_id != "gpt-image-":
+            model_ids.add(model_id)
+    if not model_ids:
+        die("server returned no supported gpt-image-* image models; generation stopped")
+    return sorted(model_ids)
 
 
 def download_image(url: str, api_key: str, timeout: int) -> bytes:
@@ -354,12 +389,21 @@ def command_check(args: argparse.Namespace) -> None:
     }, ensure_ascii=False, indent=2))
 
 
+def command_models(args: argparse.Namespace) -> None:
+    api_key, base_url, _ = load_config(config_path(args.config))
+    models = fetch_image_models(api_key, base_url, args.timeout)
+    print(json.dumps({
+        "endpoint": base_url + "/models",
+        "models": models,
+    }, ensure_ascii=False, indent=2))
+
+
 def command_generate(args: argparse.Namespace) -> None:
     path = config_path(args.config)
     api_key, base_url, _ = load_config(path)
     if not args.prompt.strip():
         die("prompt must not be empty")
-    if not args.model.startswith("gpt-image-"):
+    if not args.model.startswith("gpt-image-") or args.model == "gpt-image-":
         die("model must be a GPT Image model")
     if not 1 <= args.n <= 10:
         die("n must be between 1 and 10")
@@ -385,6 +429,13 @@ def command_generate(args: argparse.Namespace) -> None:
     for output in paths:
         if output.exists() and not args.force:
             die(f"output already exists: {output} (choose a new name or use --force)")
+
+    models = fetch_image_models(api_key, base_url, min(args.timeout, DEFAULT_MODEL_TIMEOUT))
+    if args.model not in models:
+        die(
+            f"selected model {args.model!r} is not in the server's current image model list; "
+            "generation stopped. Run `models` and ask the user to select again"
+        )
 
     print("Calling configured Image API. Generation may take several minutes.", file=sys.stderr)
     started = time.monotonic()
@@ -423,10 +474,15 @@ def build_parser() -> argparse.ArgumentParser:
     add_config_argument(check)
     check.set_defaults(func=command_check)
 
+    models = commands.add_parser("models", help="query the server for supported image models")
+    add_config_argument(models)
+    models.add_argument("--timeout", type=int, default=DEFAULT_MODEL_TIMEOUT)
+    models.set_defaults(func=command_models)
+
     generate = commands.add_parser("generate", help="generate a new image")
     add_config_argument(generate)
     generate.add_argument("--prompt", required=True)
-    generate.add_argument("--model", default=DEFAULT_MODEL)
+    generate.add_argument("--model", required=True, help="exact model ID explicitly selected by the user")
     generate.add_argument("--size", default=DEFAULT_SIZE)
     generate.add_argument(
         "--quality", choices=("low", "medium", "high", "auto"), default=DEFAULT_QUALITY

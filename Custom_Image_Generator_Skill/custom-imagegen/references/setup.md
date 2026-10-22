@@ -1,6 +1,6 @@
 # Setup and configuration
 
-The skill has no third-party Python dependencies. It requires Python 3 and an OpenAI-compatible provider that implements `POST /v1/images/generations` for a `gpt-image-*` model.
+The skill has no third-party Python dependencies. It requires Python 3 and an OpenAI-compatible provider that implements both `GET /v1/models` and `POST /v1/images/generations` for a `gpt-image-*` model.
 
 ## Configuration location
 
@@ -18,6 +18,8 @@ AI_BASE_URL=https://provider.example/v1
 ```
 
 The CLI adds `/v1` when the configured URL does not already end in `/v1`. Configuration files created by the CLI use permission mode `0600`.
+
+When updating an existing installation, use [install.md](install.md). The installer replaces Skill files and leaves external configuration files and environment variables intact. Run `check` after installation and reuse valid configuration; configure again only if it is missing or invalid.
 
 ## Recommended setup methods
 
@@ -53,16 +55,31 @@ Check configuration without making an API call:
 python3 <skill-dir>/scripts/image_gen.py check
 ```
 
-Check a complete request without making an API call:
+Query the server's current image models:
+
+```bash
+python3 <skill-dir>/scripts/image_gen.py models
+```
+
+This uses the authenticated [List models endpoint in OpenAI Docs](https://developers.openai.com/api/reference/resources/models/methods/list), expecting a JSON object with a `data` array whose entries have an `id`. The CLI lists only `gpt-image-*` models because its generation parameters support that family. It does not infer image-generation support for other model IDs. Listing a model does not test generation permissions or quota.
+
+Model discovery makes one request, with a default timeout of 30 seconds (`models --timeout SECONDS` to change it). HTTP errors, network failures, invalid responses, and an empty supported model list stop the workflow and must be reported to the user. There is no fixed-model fallback.
+
+For every generation request, show the discovered model IDs and wait for the user to choose one, including when only one is returned. `generate` requires `--model` and checks the server list again before calling the generation endpoint. If the selected model disappears, stop and ask for a new selection after fresh discovery.
+
+After the user selects a returned model, check a complete request without making another API call (replace the model placeholder with that exact ID):
 
 ```bash
 python3 <skill-dir>/scripts/image_gen.py generate \
   --prompt "A red ceramic teapot on a wooden table" \
+  --model "<user-selected-model-id>" \
   --out "output/custom-imagegen/config-test.png" \
   --dry-run
 ```
 
-If `check` succeeds but generation returns `404`, the provider may not implement the Images API or the base URL may be wrong. A `401` or `403` usually indicates an invalid key or insufficient provider permissions. A model error means the provider does not expose the requested `gpt-image-*` model identifier.
+`--dry-run` remains an offline preview; it does not prove that the selected model is currently listed or usable.
+
+If `check` succeeds but `models` returns `404`, the provider may not implement the Models API or the base URL may be wrong. Generation cannot proceed until model discovery works. If `models` succeeds but generation returns `404`, the provider may not implement the Images API. A `401` or `403` usually indicates an invalid key or insufficient provider permissions. A generation model error can indicate that the provider lists a model that the key cannot actually use.
 
 ## Security boundaries
 
