@@ -1,37 +1,27 @@
-# Installation and updates
+# Install or update through Codex
 
-Use the bundled installer for both a new installation and replacement of an existing `custom-imagegen`. It validates and stages the new files before replacing the installed directory. Replacement failures restore the previous installation; if restoration itself fails, the error identifies the preserved backup directory.
+The user-facing entry is the single `$skill-installer` message in [README.md](../README.md). Codex performs the work below; do not hand the user a sequence of clone, backup, or installation commands.
 
-The installer replaces only this Skill. Existing external configuration files and environment variables are reused, including `CUSTOM_IMAGEGEN_CONFIG`, `XDG_CONFIG_HOME`, provider URLs, API keys, and proxy settings. Do not run `configure` during an update unless the existing configuration is missing or invalid.
+Codex's built-in Skill installer downloads and copies Skill files, refuses an existing destination, and does not run package installation hooks. This repository cannot change that behavior. The README's install/update request explicitly asks Codex to replace the existing version, reuse configuration, and check it; a bare `$skill-installer <URL>` does not guarantee those extra actions.
 
-## Install or update from GitHub
+## Agent workflow
 
-Download the repository to a temporary directory, then run the installer from the downloaded version:
+1. Use the built-in Skill installer's `scripts/install-skill-from-github.py` to download the requested GitHub Skill into a fresh temporary `--dest`, keeping the existing installation available. For this repository, the Skill path is `Custom_Image_Generator_Skill/custom-imagegen`.
+2. Locate the existing `custom-imagegen` installation. Otherwise use `$CODEX_HOME/skills/custom-imagegen`, or `~/.codex/skills/custom-imagegen` when `CODEX_HOME` is unset.
+3. Run the newly downloaded package's `scripts/install_skill.py --dest <actual-skill-directory>`. This performs a fresh installation or replaces an existing `custom-imagegen`. The installer validates and stages the new files before replacing the installed directory, removes obsolete package files, and restores the previous installation if replacement fails. If restoration itself fails, its error identifies the preserved backup directory.
+4. Run the installed `scripts/image_gen.py check`. Reuse valid external configuration and environment variables, including API keys, provider URLs, proxies, `CUSTOM_IMAGEGEN_CONFIG`, and `XDG_CONFIG_HOME`. Configure only if the existing configuration is missing or invalid; follow [setup.md](setup.md), prefer an existing local configuration file, and never request secrets in chat.
+5. Report completion and that the Skill will be available on the next turn. A configuration problem should be reported separately from successful installation.
 
-```bash
-custom_imagegen_checkout="$(mktemp -d)"
-git clone --depth 1 --branch main https://github.com/xixia0523/skills.git "$custom_imagegen_checkout/skills"
-python3 "$custom_imagegen_checkout/skills/Custom_Image_Generator_Skill/custom-imagegen/scripts/install_skill.py"
-```
-
-The default destination is `$CODEX_HOME/skills/custom-imagegen`, or `~/.codex/skills/custom-imagegen` when `CODEX_HOME` is unset. The destination is the complete Skill directory; `--dest` can select an existing installation in another location:
+The built-in helper can stage the package with:
 
 ```bash
-python3 <downloaded-skill-dir>/scripts/install_skill.py --dest "/path/to/skills/custom-imagegen"
+python3 <skill-installer-dir>/scripts/install-skill-from-github.py \
+  --url https://github.com/xixia0523/skills/tree/main/Custom_Image_Generator_Skill/custom-imagegen \
+  --dest <temporary-directory>/skills
 ```
 
-If an Agent uses Codex's built-in GitHub Skill installer to download the source, use a temporary `--dest` for that download, then run the downloaded `scripts/install_skill.py` against the actual installation. The built-in installer refuses an existing destination; a direct `$skill-installer <URL>` invocation does not provide this package's replacement behavior.
+Then Codex runs the downloaded installer and configuration check against the actual destination. These are Agent implementation steps, not additional user setup commands.
 
-The existing installed directory must identify itself as `custom-imagegen` in its `SKILL.md`. Other directories are rejected. The package file list excludes local credentials, generated images, tests, and caches. Configuration inside the installation directory must be moved outside it before updating. For a symlinked installation, pass the actual target directory with `--dest`.
+The destination must identify itself as `custom-imagegen` in its `SKILL.md`. Other directories are rejected. Local credentials, outputs, tests, and caches are excluded from replacement files. Configuration located inside the installation directory must be moved outside it before updating; for a symlinked installation use its actual target as `--dest`.
 
-## Reuse and verify configuration
-
-After installation, run the installed CLI's local configuration check:
-
-```bash
-python3 "${CODEX_HOME:-$HOME/.codex}/skills/custom-imagegen/scripts/image_gen.py" check
-```
-
-For a custom destination, use that directory's `scripts/image_gen.py` instead. `check` does not make a network request or display the API key. When it succeeds, proceed with the existing configuration. When it reports missing or invalid configuration, follow [setup.md](setup.md); never request secrets in chat.
-
-Codex detects Skill changes automatically; if the update does not appear, restart Codex. See [OpenAI Docs](https://learn.chatgpt.com/docs/build-skills).
+For Codex's supported GitHub Skill installation entry, see [OpenAI Docs](https://learn.chatgpt.com/docs/build-skills).

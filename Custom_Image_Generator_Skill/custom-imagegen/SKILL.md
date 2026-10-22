@@ -16,7 +16,7 @@ Resolve `<skill-dir>` as the directory containing this `SKILL.md`; do not assume
 
 ## Installation and updates
 
-When asked to install or update this Skill, follow [references/install.md](references/install.md). Run the new version's bundled `scripts/install_skill.py` after downloading it; the installer replaces an existing `custom-imagegen` and preserves external configuration and environment variables. Check the installed CLI's configuration first and reuse it when valid; run `configure` only when configuration is missing or invalid.
+When asked to install or update this Skill, follow [references/install.md](references/install.md). Codex handles downloading, replacement, and configuration checks from the user's single install/update message; do not require the user to clone the repository or run the internal installer. Use the built-in Skill installer to stage the download, then the new version's bundled installer to replace an existing `custom-imagegen`. Reuse valid external configuration and environment variables; configure only when configuration is missing or invalid.
 
 ## Configuration gate
 
