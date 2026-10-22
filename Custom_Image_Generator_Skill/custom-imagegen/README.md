@@ -2,21 +2,35 @@
 
 使用自己的 OpenAI 兼容服务生成图片。每次生图先读取服务端模型列表，再由用户手动选择模型。
 
-## 一条消息安装或更新
+## 标准安装
 
 将下面这一条消息发给 Codex：
 
 ```text
-$skill-installer https://github.com/xixia0523/skills/tree/main/Custom_Image_Generator_Skill/custom-imagegen 安装或覆盖更新，沿用现有环境配置并检查；权限不足时先请求授权，无法授权则停止、说明原因并给出手动操作命令。
+$skill-installer install https://github.com/xixia0523/skills/tree/main/Custom_Image_Generator_Skill/custom-imagegen
 ```
 
-Codex 负责下载、安装或覆盖更新，以及检查现有配置。正常情况下无需手动克隆仓库或运行安装脚本。已有 API key、服务地址、代理及外部配置继续沿用；配置有效时直接使用，首次缺少配置时只需按提示在本地录入自己的服务地址和 API key。
+使用 Codex 内置安装器下载和安装，本项目不提供覆盖安装脚本。已有同名 Skill 时停止，由用户手动删除旧 Skill 后重新发送上述标准安装指令。
 
-安装写入、配置读取或生图联网受限时，Codex 会先通过宿主的审批机制请求本次操作所需权限，获准后继续。用户拒绝、自动审批拒绝或宿主策略禁止提权时，停止受阻操作，说明具体原因并给出带实际路径的手动命令。宿主决定审批是交给用户还是自动审核；Skill 无法覆盖宿主策略。详见 [references/permissions.md](references/permissions.md)。
+内置安装器会拒绝已存在的目标目录，但可能先下载再检查，也不会在安装前自动读取仓库中的 Skill 规则。本项目无法改变它的执行顺序。若要求**下载前检查，并在已安装时给出手动删除命令**，请在同一条安装消息中补充：
 
-内置 `$skill-installer` 会在目标目录已存在时退出，也不会自动运行仓库里的安装或配置脚本。因此，上面消息中的“覆盖、沿用配置、检查配置”是交给 Codex 的明确任务；只提供 Skill 名称和 URL，无法保证完成这些额外步骤。
+```text
+安装前先检查本地是否已有 custom-imagegen；若有则停止，只给出手动删除命令和标准安装指令，不要自行删除、覆盖、改名或临时安装。
+```
 
 Agent 安装流程见 [references/install.md](references/install.md)。
+
+## 已有旧版时手动重装
+
+在本机终端删除旧 Skill。下面适用于默认路径；设置过 `CODEX_HOME` 或自定义安装目录时，应使用 Codex 检查后给出的实际路径：
+
+```bash
+rm -rf -- "$HOME/.codex/skills/custom-imagegen"
+```
+
+再回到 Codex，重新发送“标准安装”中的 `$skill-installer install ...` 指令。Codex 不执行删除或自动覆盖。
+
+仅删除旧 Skill 目录，保留 `~/.config/custom-imagegen/.env` 等外部配置。已有 API key、服务地址、代理及环境变量继续沿用。若旧配置放在 Skill 内部，删除前应先迁移到外部配置路径。
 
 ## 使用
 
@@ -27,6 +41,8 @@ $custom-imagegen 生成一张夏日中国乡村儿童在田野和溪流边玩耍
 ```
 
 Skill 查询当前服务端的 `gpt-image-*` 模型，展示列表并等待用户选择，再使用选定模型生成图片。即使只有一个模型也需要选择。沙箱权限导致查询受阻时先请求授权；无法授权、服务端查询失败或没有支持的模型时，提示原因并停止。
+
+首次安装写入、配置读取或生图联网受限时，先通过宿主的审批机制请求所需权限，获准后继续；用户拒绝、自动审批拒绝或策略禁止提权时，停止、说明原因并给出手动操作办法。已有安装始终按上面的手动重装流程处理。详见 [references/permissions.md](references/permissions.md)。
 
 ## 环境与配置
 

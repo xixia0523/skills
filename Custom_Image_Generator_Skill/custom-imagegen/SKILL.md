@@ -20,7 +20,7 @@ Apply [references/permissions.md](references/permissions.md) to installation, co
 
 ## Installation and updates
 
-When asked to install or update this Skill, follow [references/install.md](references/install.md). Codex handles downloading, replacement, and configuration checks from the user's single install/update message; manual commands are a fallback only when the required authorization cannot be obtained. Use the built-in Skill installer to stage the download, then the new version's bundled installer to replace an existing `custom-imagegen`. Reuse valid external configuration and environment variables; configure only when configuration is missing or invalid.
+When asked to install or update this Skill, follow [references/install.md](references/install.md). Check for an existing local installation before downloading. If one exists, stop and give the user its exact manual deletion command and the standard `$skill-installer install <GitHub-URL>` message to send again after deletion. Never delete, rename, replace, or overwrite an existing installation yourself, even if write access is available; do not request permission to do so. If no installation exists, use the built-in Skill installer directly. Reuse valid external configuration and environment variables; configure only when configuration is missing or invalid.
 
 ## Configuration gate
 

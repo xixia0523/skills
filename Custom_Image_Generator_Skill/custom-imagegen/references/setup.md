@@ -19,7 +19,7 @@ AI_BASE_URL=https://provider.example/v1
 
 The CLI adds `/v1` when the configured URL does not already end in `/v1`. Configuration files created by the CLI use permission mode `0600`.
 
-When updating an existing installation, use [install.md](install.md). The installer replaces Skill files and leaves external configuration files and environment variables intact. Run `check` after installation and reuse valid configuration; configure again only if it is missing or invalid.
+When reinstalling, use [install.md](install.md): an existing Skill requires the user to delete its installation directory manually and send the standard installation request again. Keep external configuration files and environment variables intact. Run `check` on first use and reuse valid configuration; configure again only if it is missing or invalid.
 
 ## Recommended setup methods
 
