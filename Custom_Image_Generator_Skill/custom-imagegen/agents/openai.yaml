@@ -1,0 +1,4 @@
+interface:
+  display_name: "Custom Image Generator"
+  short_description: "Generate images through the configured private endpoint"
+  default_prompt: "Use $custom-imagegen to generate a polished image from my description."
