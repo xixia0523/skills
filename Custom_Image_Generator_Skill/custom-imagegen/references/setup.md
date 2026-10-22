@@ -63,7 +63,7 @@ python3 <skill-dir>/scripts/image_gen.py models
 
 This uses the authenticated [List models endpoint in OpenAI Docs](https://developers.openai.com/api/reference/resources/models/methods/list), expecting a JSON object with a `data` array whose entries have an `id`. The CLI lists only `gpt-image-*` models because its generation parameters support that family. It does not infer image-generation support for other model IDs. Listing a model does not test generation permissions or quota.
 
-Model discovery makes one request, with a default timeout of 30 seconds (`models --timeout SECONDS` to change it). HTTP errors, network failures, invalid responses, and an empty supported model list stop the workflow and must be reported to the user. There is no fixed-model fallback.
+Model discovery makes one request, with a default timeout of 30 seconds (`models --timeout SECONDS` to change it). If filesystem or sandbox network permissions block configuration access or the query, first follow [permissions.md](permissions.md): request the required authorization when permitted and retry after approval. If authorization is declined or prohibited, explain why and provide the actual manual command. Provider HTTP errors, invalid responses, an empty supported model list, or failures remaining after authorized access stop the workflow and must be reported. There is no fixed-model fallback.
 
 For every generation request, show the discovered model IDs and wait for the user to choose one, including when only one is returned. `generate` requires `--model` and checks the server list again before calling the generation endpoint. If the selected model disappears, stop and ask for a new selection after fresh discovery.
 

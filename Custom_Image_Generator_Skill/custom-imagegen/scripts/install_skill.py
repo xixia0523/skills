@@ -20,6 +20,7 @@ PACKAGE_FILES = (
     "agents/openai.yaml",
     "references/setup.md",
     "references/install.md",
+    "references/permissions.md",
     "scripts/image_gen.py",
     "scripts/install_skill.py",
 )
@@ -135,17 +136,27 @@ def main() -> int:
         "--dest", type=Path, default=default_destination(),
         help="full destination Skill directory (default: $CODEX_HOME/skills/custom-imagegen)",
     )
+    parser.add_argument(
+        "--validate-only", action="store_true",
+        help="validate the downloaded package without installing or changing configuration",
+    )
     args = parser.parse_args()
     try:
-        action = install_skill(args.source, args.dest)
+        if args.validate_only:
+            source = args.source.expanduser().resolve()
+            validate_source(source)
+            result = {"action": "validated", "source_dir": str(source)}
+        else:
+            action = install_skill(args.source, args.dest)
+            result = {
+                "action": action,
+                "skill_dir": str(args.dest.expanduser().absolute()),
+                "configuration": "preserved; reuse existing external configuration and environment variables",
+            }
     except (InstallError, OSError, UnicodeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
-    print(json.dumps({
-        "action": action,
-        "skill_dir": str(args.dest.expanduser().absolute()),
-        "configuration": "preserved; reuse existing external configuration and environment variables",
-    }, ensure_ascii=False, indent=2))
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
 
