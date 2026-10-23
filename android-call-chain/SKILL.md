@@ -5,9 +5,13 @@ description: Reconstruct one evidence-backed request-and-return call chain for a
 
 # Android 源码调用链研究
 
-只在用户显式输入 `$android-call-chain` 时应用本 Skill。若本 Skill 被隐式加载而用户没有显式调用，不要套用这些流程。
+调用链研究只在用户显式输入 `$android-call-chain` 时开展。若本 Skill 被隐式加载而用户没有显式调用，不要套用调用链研究流程。
 
 目标是基于不可变源码基线还原一条实际主链：从用户指定的上层 API 出发，追到承担该调用语义的责任终点，再反向追踪返回值、回调或状态事件，形成可审计闭环。不要把所有可能实现分支罗列成“完整调用链”。
+
+## 安装与更新
+
+用户要求安装或更新本 Skill 时，先阅读 [references/install.md](references/install.md)。在下载或申请安装写入权限前，检查实际目标路径及当前会话报告的同名安装。发现已有安装时停止，给出已核实的绝对路径、供用户在本机终端手动删除该 Skill 的命令，以及删除后重新发送的标准 GitHub 安装消息；不要自行删除、改名、替换、覆盖或通过临时安装绕过冲突，也不要申请删除或替换权限。确认不存在旧安装后，直接使用 Codex 内置 `skill-installer` 安装。
 
 ## 输入门禁
 
