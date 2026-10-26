@@ -1,0 +1,4 @@
+interface:
+  display_name: "Android 全链路源码闭环分析"
+  short_description: "追踪 Android Demo 到 Framework、Native/HAL 与内核边界的可验证调用链"
+  default_prompt: "使用 $android-callchain-closure 分析 DEMO_SOURCE 中 TARGET_CALL 的完整调用链，并生成一份含总览时序图的 Markdown 文档。"
