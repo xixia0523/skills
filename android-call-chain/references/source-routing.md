@@ -4,9 +4,9 @@
 
 ## 基线解析
 
-1. 精确 tag：从对应仓库解析 tag 指向的 commit，并在报告中同时记录 tag 与 commit。
+1. 精确 tag：先在平台 manifest 或对应官方仓库中核实 tag 存在，再解析实际取证仓库的清单 revision/tag 对应的 commit；报告同时记录 tag 与 commit。
 2. Build ID：从官方 build/tag 对照或该产品的 manifest 固定到源码清单；无法唯一映射时明确缺口并索取完整 build fingerprint、manifest 或厂商版本信息。
-3. Android 大版本：使用 `android-<major>.0.0_r1`，再解析每个实际取证仓库的 commit。
+3. Android 大版本：从官方[版本、标签与 Build ID 表](https://source.android.com/docs/setup/reference/build-numbers)确认该版本的基础源码发布，再在官方仓库核实 tag 并解析各取证仓库的清单 revision/tag 与 commit。不能按多数版本的命名规律直接拼接 `android-<major>.0.0_r1`，例如 Android 4 的基础发布标签是 `android-4.0.1_r1`。用户给出的次版本或季度版本属于基线约束，不能退回该大版本的另一个基础发布。无法确认标签或解析 revision 时说明未锁定的部分，不擅自切换到最新版本或其他仓库的相似标签。
 4. 产品构建：以该构建的 manifest、repo revision、内核 commit、Vendor 配置和 overlay 为准。AOSP 基础 tag 不能替代产品实际 revision。
 
 禁止把 `main`、`master`、`android-latest-release` 或网页当前版本作为固定基线。引用 tag 便于阅读，但证据 URL 应固定到不可变 commit。
@@ -16,7 +16,7 @@
 - 优先使用 `android.googlesource.com` 的生产仓库和 Gitiles commit 固定链接；Android Code Search 可用于定位符号，但最终核对指定基线。
 - 先从调用点所在模块查找实际依赖，再跨仓库追踪；不要假设同名类属于相同进程或版本。
 - 用 build 文件、manifest、资源 overlay、service 注册和 feature flag 确认被编译与被选择的实现。
-- AIDL 的生成代码可依据接口和生成规则解释，不需要粘贴整份生成物；跨 Binder 两端仍需定位 client proxy 调用、server stub/实现和返回路径。
+- AIDL 的生成代码可依据接口和生成规则解释，不需要粘贴整份生成物；主链所经过的 client proxy、server stub/实现及约定的返回/通知均需定位。若本次范围只到投递确认，不能据此推定服务端已执行。
 
 ## Kernel 与驱动
 

@@ -23,4 +23,6 @@ $skill-installer install https://github.com/xixia0523/skills/tree/main/android-c
 $android-call-chain 分析 Android 16 中 Context.getSystemService(String) 的请求和返回调用链。
 ```
 
-Skill 仅在显式调用时开展源码研究。完整报告默认保存到 `docs/call-chains/<api>-<baseline>.md`，具体输入和证据要求见 [SKILL.md](SKILL.md)。
+Skill 仅在显式调用时开展源码研究。完整报告默认保存到 `docs/call-chains/<api>-<variant>-<baseline>.md`，其中 `variant` 区分重载与场景，写入前检查已有报告的范围以避免覆盖。具体输入和证据要求见 [SKILL.md](SKILL.md)。
+
+报告第三章“请求链”和第四章“响应链”涉及驱动、内核时，会在对应源码前增加局部调用图，重点说明进程与线程、用户态与内核态、同步调用与异步投递，以及谁在等待、由谁唤醒、恢复后从哪里继续。先看图理解流程，再按步骤阅读固定版本源码。
