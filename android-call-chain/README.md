@@ -25,4 +25,8 @@ $android-call-chain 分析 Android 16 中 Context.getSystemService(String) 的�
 
 Skill 仅在显式调用时开展源码研究。完整报告默认保存到 `docs/call-chains/<api>-<variant>-<baseline>.md`，其中 `variant` 区分重载与场景，写入前检查已有报告的范围以避免覆盖。具体输入和证据要求见 [SKILL.md](SKILL.md)。
 
+分析采用多 Agent 协作：主 Agent 通过对话明确需求，再拆分与编排任务，安排至少两个研究子 Agent 并发取证并汇总；另设独立 Review Agent 直接对照固定版本源码核验报告。没有源码依据的内容须就近说明原因、影响和缺口，复核状态随报告记录。具体分工、依赖和修订复核流程见 [references/multi-agent-workflow.md](references/multi-agent-workflow.md)。
+
+请求链和响应链中的源码片段都会配有讲解：简单逻辑简述，复杂逻辑说明关键条件、数据变化和执行机制。一个步骤涉及多个调用时，先说明整体功能和内部函数调用链，再按需展开 `R8.1`、`R8.2` 或对应 S 子步骤，便于先看懂整体，再阅读源码。
+
 报告第三章“请求链”和第四章“响应链”涉及驱动、内核时，会在对应源码前增加局部调用图，重点说明进程与线程、用户态与内核态、同步调用与异步投递，以及谁在等待、由谁唤醒、恢复后从哪里继续。先看图理解流程，再按步骤阅读固定版本源码。
